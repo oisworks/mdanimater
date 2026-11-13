@@ -1,0 +1,18 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run Extension",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}",
+        "--user-data-dir=${workspaceFolder}/.vscode-test/user-data",
+        "--extensions-dir=${workspaceFolder}/.vscode-test/extensions",
+        "--disable-workspace-trust",
+        "--disable-extensions",
+        "${workspaceFolder}"
+      ]
+    }
+  ]
+}

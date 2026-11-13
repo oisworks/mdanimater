@@ -1,0 +1,353 @@
+{
+  "name": "mdanimater",
+  "displayName": "mdanimater",
+  "description": "Edit Markdown in a rich inline preview that keeps your typing and AI edits together, with editable tables, resizable columns, colored Mermaid diagrams, Gherkin boards, HTML/PDF export, Rich Diff, and VS Code's own undo.",
+  "version": "0.3.3",
+  "publisher": "oisworks",
+  "license": "SEE LICENSE IN LICENSE",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/oisworks/mdanimater.git"
+  },
+  "bugs": {
+    "url": "https://github.com/oisworks/mdanimater/issues"
+  },
+  "homepage": "https://github.com/oisworks/mdanimater#readme",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other",
+    "Visualization"
+  ],
+  "keywords": [
+    "markdown",
+    "rich editor",
+    "live preview",
+    "diff",
+    "mermaid",
+    "gherkin",
+    "bdd",
+    "tables",
+    "notes"
+  ],
+  "galleryBanner": {
+    "color": "#0f172a",
+    "theme": "dark"
+  },
+  "extensionKind": [
+    "ui"
+  ],
+  "icon": "resources/icon.png",
+  "activationEvents": [
+    "onStartupFinished",
+    "onCommand:mdanimater.openMenu",
+    "onCommand:mdanimater.toggle",
+    "onCommand:mdanimater.openRichDiff",
+    "onCommand:mdanimater.exportHtml",
+    "onCommand:mdanimater.exportPdf",
+    "onCustomEditor:mdanimater.editor"
+  ],
+  "main": "./extension.js",
+  "scripts": {
+    "vscode:prepublish": "npm run build:all && npm run verify:branding",
+    "build": "esbuild src/richEditor.js --bundle --format=iife --outfile=media/richEditor.js",
+    "build:mermaid": "esbuild src/mermaidLoader.js --bundle --format=iife --outfile=media/mermaid.js",
+    "build:diff": "esbuild src/richDiff.js --bundle --format=iife --outfile=media/richDiff.js",
+    "build:all": "npm run build && npm run build:mermaid && npm run build:diff",
+    "generate:schema": "node scripts/generate-config-schema.mjs",
+    "package:vsix": "vsce package",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "verify:bundles": "node scripts/verify-bundles.mjs",
+    "verify:branding": "node scripts/verify-branding.mjs",
+    "publish:marketplace": "vsce publish",
+    "publish:openvsx": "ovsx publish",
+    "watch": "esbuild src/richEditor.js --bundle --format=iife --outfile=media/richEditor.js --watch"
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "mdanimater.openMenu",
+        "title": "mdanimater: Open Menu",
+        "shortTitle": "mdanimater",
+        "icon": "$(markdown)"
+      },
+      {
+        "command": "mdanimater.toggle",
+        "title": "mdanimater: Toggle Markdown Open Mode",
+        "shortTitle": "Toggle mdanimater",
+        "icon": {
+          "light": "resources/icons/editor-toggle-light.svg",
+          "dark": "resources/icons/editor-toggle-dark.svg"
+        }
+      },
+      {
+        "command": "mdanimater.openGitDiff",
+        "title": "mdanimater: Open Git Diff",
+        "shortTitle": "Open Git Diff",
+        "icon": "$(compare-changes)"
+      },
+      {
+        "command": "mdanimater.openRichDiff",
+        "title": "mdanimater: Open Rich Diff",
+        "shortTitle": "Open Rich Diff",
+        "icon": "$(diff)"
+      },
+      {
+        "command": "mdanimater.exportHtml",
+        "title": "mdanimater: Export HTML",
+        "shortTitle": "Export HTML",
+        "icon": "$(file-code)"
+      },
+      {
+        "command": "mdanimater.exportPdf",
+        "title": "mdanimater: Export PDF",
+        "shortTitle": "Export PDF",
+        "icon": "$(file-pdf)"
+      },
+      {
+        "command": "mdanimater.formatDocument",
+        "title": "mdanimater: Format Document",
+        "shortTitle": "Format Document"
+      },
+      {
+        "command": "mdanimater.createConfig",
+        "title": "mdanimater: Create Formatter and Lint Configuration",
+        "shortTitle": "Create .mdanimaterrc.json"
+      }
+    ],
+    "languages": [
+      {
+        "id": "jsonc",
+        "filenames": [
+          ".mdanimaterrc.json"
+        ]
+      }
+    ],
+    "jsonValidation": [
+      {
+        "fileMatch": ".mdanimaterrc.json",
+        "url": "./schemas/mdanimaterrc.schema.json"
+      }
+    ],
+    "customEditors": [
+      {
+        "viewType": "mdanimater.editor",
+        "displayName": "mdanimater Markdown Editor",
+        "selector": [
+          {
+            "filenamePattern": "*.md"
+          },
+          {
+            "filenamePattern": "*.markdown"
+          }
+        ],
+        "priority": "option"
+      }
+    ],
+    "configuration": {
+      "title": "mdanimater",
+      "properties": {
+        "mdanimater.openMarkdownAsRichEditor": {
+          "type": "boolean",
+          "default": true,
+          "description": "Open regular Markdown files with mdanimater by default, including remote files."
+        },
+        "mdanimater.autoSave": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Save a Markdown file open in mdanimater one second after it stops changing. Keeping the file saved lets VS Code reload it when an AI agent such as Claude Code writes to it, so your typing and the agent's changes are both kept instead of ending in a save conflict. Saves made this way do not run `#mdanimater.formatOnSave#`."
+        },
+        "mdanimater.jumpToOpenedPosition": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Also jump to the requested position for VS Code Search results and links in Copilot Chat, and highlight the match. Links that extensions such as Claude Code and Codex open already jump without this. VS Code passes the position only to text editors, so with this on, every Markdown file opens in the text editor first and switches to mdanimater right away, which causes a visible flicker. Requires `#mdanimater.openMarkdownAsRichEditor#`."
+        },
+        "mdanimater.richTheme": {
+          "type": "string",
+          "default": "default",
+          "enum": [
+            "default",
+            "midnight",
+            "graphite",
+            "forest",
+            "ivory",
+            "paper",
+            "solar"
+          ],
+          "enumDescriptions": [
+            "Follow the active VS Code theme.",
+            "Dark blue-black theme.",
+            "Neutral dark gray theme.",
+            "Dark green writing theme.",
+            "Warm light theme.",
+            "Clean white paper theme.",
+            "Soft warm light theme."
+          ],
+          "description": "Theme used inside the Rich Editor."
+        },
+        "mdanimater.richTablePreview": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show Markdown tables as rich editable tables in the Rich Editor."
+        },
+        "mdanimater.gherkinPreview": {
+          "type": "boolean",
+          "default": true,
+          "description": "Render Gherkin code blocks as BDD boards in the Rich Editor."
+        },
+        "mdanimater.mermaidPreview": {
+          "type": "boolean",
+          "default": true,
+          "description": "Render Mermaid code blocks as diagrams in the Rich Editor."
+        },
+        "mdanimater.mermaidColorized": {
+          "type": "boolean",
+          "default": true,
+          "description": "Apply mdanimater's clearer color palette to Mermaid diagrams."
+        },
+        "mdanimater.mermaidPreviewSize": {
+          "type": "string",
+          "default": "readable",
+          "enum": [
+            "source",
+            "readable",
+            "large"
+          ],
+          "enumDescriptions": [
+            "Match the source block height.",
+            "Use a readable minimum height.",
+            "Use a larger fitted preview height for detailed diagrams."
+          ],
+          "description": "Controls the preview height used for Mermaid diagrams in the Rich Editor."
+        },
+        "mdanimater.previewWidthPixels": {
+          "type": "integer",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 10000,
+          "description": "Custom text width in pixels, saved when dragging the right edge. 0 uses the selected width mode. Positive widths below 320 are treated as 320. The content always fits smaller windows."
+        },
+        "mdanimater.previewWidth": {
+          "type": "string",
+          "default": "wide",
+          "enum": [
+            "default",
+            "wide"
+          ],
+          "enumDescriptions": [
+            "Limit the writing width and center the content.",
+            "Fit the content to the available editor width (default)."
+          ],
+          "description": "Controls the content width used inside the Rich Editor."
+        },
+        "mdanimater.lint.enabled": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Check Markdown files and show problems in the Problems panel and the Rich Editor. Turn individual rules on or off in a `.mdanimaterrc.json` file; choose **Create Formatter and Lint Configuration** in **mdanimater: Open Menu** to create one with every rule listed."
+        },
+        "mdanimater.formatOnSave": {
+          "type": "boolean",
+          "default": false,
+          "scope": "resource",
+          "markdownDescription": "Format Markdown files with mdanimater's formatter when they are saved. Formatter rules are turned on or off in `.mdanimaterrc.json`. Auto save after a delay does not format."
+        },
+        "mdanimater.openGitDiffAsRichDiff": {
+          "type": "boolean",
+          "default": true,
+          "description": "Open new Markdown Git diffs from Source Control as rendered Rich Diff, preserving the selected revisions. Use Source Diff in the preview to open the native text diff."
+        }
+      }
+    },
+    "menus": {
+      "editor/title": [
+        {
+          "command": "mdanimater.openMenu",
+          "when": "resourceExtname == .md || resourceExtname == .markdown",
+          "group": "navigation@1"
+        }
+      ],
+      "scm/resourceState/context": [
+        {
+          "command": "mdanimater.openRichDiff",
+          "when": "resourceExtname == .md || resourceExtname == .markdown",
+          "group": "navigation@1"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "mdanimater.openMenu"
+        },
+        {
+          "command": "mdanimater.openRichDiff",
+          "when": "false"
+        },
+        {
+          "command": "mdanimater.openGitDiff",
+          "when": "false"
+        },
+        {
+          "command": "mdanimater.exportHtml",
+          "when": "false"
+        },
+        {
+          "command": "mdanimater.exportPdf",
+          "when": "false"
+        },
+        {
+          "command": "mdanimater.toggle",
+          "when": "false"
+        },
+        {
+          "command": "mdanimater.formatDocument",
+          "when": "false"
+        },
+        {
+          "command": "mdanimater.createConfig",
+          "when": "false"
+        }
+      ]
+    }
+  },
+  "devDependencies": {
+    "@codemirror/autocomplete": "^6.20.3",
+    "@codemirror/commands": "^6.10.3",
+    "@codemirror/lang-cpp": "^6.0.3",
+    "@codemirror/lang-css": "^6.3.1",
+    "@codemirror/lang-go": "^6.0.1",
+    "@codemirror/lang-html": "^6.4.11",
+    "@codemirror/lang-java": "^6.0.2",
+    "@codemirror/lang-javascript": "^6.2.5",
+    "@codemirror/lang-json": "^6.0.2",
+    "@codemirror/lang-markdown": "^6.5.0",
+    "@codemirror/lang-php": "^6.0.2",
+    "@codemirror/lang-python": "^6.2.1",
+    "@codemirror/lang-rust": "^6.0.2",
+    "@codemirror/lang-sql": "^6.10.0",
+    "@codemirror/lang-yaml": "^6.1.3",
+    "@codemirror/language": "^6.12.3",
+    "@codemirror/legacy-modes": "^6.5.3",
+    "@codemirror/search": "^6.7.0",
+    "@codemirror/state": "^6.6.0",
+    "@codemirror/view": "6.43.15",
+    "@eslint/js": "^10.0.1",
+    "@lezer/highlight": "^1.2.3",
+    "@lezer/markdown": "^1.6.3",
+    "@vitest/coverage-v8": "^4.1.10",
+    "@vscode/vsce": "^3.9.1",
+    "esbuild": "^0.28.0",
+    "eslint": "^10.8.0",
+    "globals": "^17.8.0",
+    "jsdom": "^29.1.1",
+    "ovsx": "^0.10.12",
+    "vitest": "^4.1.10"
+  },
+  "dependencies": {
+    "highlight.js": "^11.11.1",
+    "mermaid": "^11.15.0"
+  }
+}
