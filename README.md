@@ -79,18 +79,19 @@ mdanimater は、この考えを普段の作業場所であるIDEの中で実現
 
 - `.md` と `.markdown` の file を既定で mdanimater で開きます。WSL・SSH・Dev Containers・Codespaces 上の file も対象です。Source Control から新しく開く Markdown の Git diff も、整形された Rich Diff で表示します。mdanimater と text editor は、editor 上部の button か command palette で切り替えられます。
 - 見出し・強調・inline code・link・画像・引用・task の checkbox・区切り線・syntax highlight 付きの code block・table・details block・Mermaid の図・Gherkin の scenario を、編集しながら表示します。
-- Markdown の table を rich table として編集できます。cell の編集、行と列の追加・削除ができ、cell 内の `<br>` は改行として表示します。列幅は見出し cell の右端を drag して変えられます。幅は区切り行に保存され、右端を double-click するとすべての列が元に戻ります。
+- Markdown の table を rich table として編集できます。cell の編集、行と列の追加・削除ができ、cell 内の `<br>` は改行として表示します。列幅は見出し cell の右端を drag して変えられます。幅の変更は開いている editor 内の表示にだけ反映され、Markdown 本文や Git 差分は変わりません。右端を double-click すると自動幅に戻ります。調整した幅は editor を閉じると失われます。以前の区切り行に保存された幅は互換表示しますが、自動で書き換えません。
 - Mermaid の図（Markdown の fence と Azure DevOps 形式の `::: mermaid` block）を表示します。配色の変更、全体表示、拡大縮小、移動、modal 表示ができます。
 - `gherkin`・`feature`・`cucumber` の code block を、切り替え可能な BDD board として表示します。
 - YAML の front matter を key・値・tag の card として表示します。card を click すると YAML を編集できます。
 - Markdown file 間の `#見出し` や `#L12` の link をたどり、その見出しや行へ移動します。
 - VS Code に登録された補完 provider（他の extension のものも含む）と、code fence の言語名を補完候補に出します。
-- `#ff0066` のような inline の色の値の後ろに色見本を出します。Git で追加・変更・削除された行は行番号の横に印を付け、検索の一致箇所は VS Code の検索と同じ色で highlight します。
+- `#ff0066` のような inline の色の値の後ろに色見本を出します。Git で追加・変更・削除された行は行番号の横とスクロールバー横に色付きの印を付け、右端の印を click するとその場所に移動します。検索の一致箇所は VS Code の検索と同じ色で highlight します。
 - 本文は画面幅に合わせて自動で伸縮します。本文右端の境界線をdragすると好みの幅に調整して保存でき、double-clickで自動幅に戻せます。editor 内の設定 button から固定幅への切り替えと theme（暗い theme・明るい theme がいくつか、または VS Code の theme に合わせる）を選べます。
 
 ### 差分の確認と export
 
 - Git の差分を、見出し・list・table・画像・link・code block を描画した状態で比べられます。表は列幅・配置を揃え、追加・削除を色と記号で表示します。Source Control のステージ済み・未ステージ・過去版の比較対象を保持します。原文の確認や行のステージ操作には、画面の **Source Diff** から VS Code 標準の差分を開けます。
+- Rich Diff の **Review Comments** で GitHub PR / GitLab.com MR の URL を入力すると、既存のコメントと返信を IDE 内の隣接 panel で読めます。Refresh で再取得できます。信頼済み workspace と、sign-in 済みの公式 `gh` / `glab` CLI が必要です。読み取り専用で、投稿・返信・行への jump・self-hosted service は対象外です。
 - local の Markdown file を、editor と同じ rich table・図・theme の HTML か PDF に export します。
 
 ### format と lint

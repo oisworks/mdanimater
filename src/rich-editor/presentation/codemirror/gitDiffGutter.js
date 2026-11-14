@@ -1,6 +1,8 @@
 import { RangeSetBuilder, StateEffect, StateField } from "@codemirror/state";
 import { GutterMarker, gutter } from "@codemirror/view";
 
+import { createGitDiffOverviewRuler } from "./gitDiffOverviewRuler.js";
+
 const gitChangeTypes = new Set(["added", "modified", "deleted"]);
 const gitChangeOrder = ["deleted", "modified", "added"];
 
@@ -57,7 +59,7 @@ export function createGitDiffGutter(initialChanges = []) {
   }
 
   return {
-    extension: gitDiffField,
+    extension: [gitDiffField, createGitDiffOverviewRuler((state) => state.field(gitDiffField).changes)],
     update,
   };
 }

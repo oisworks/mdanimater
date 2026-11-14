@@ -3,8 +3,8 @@
 // Dragging the handle on a header cell's right edge resizes that column the
 // way a spreadsheet does: the other columns keep the width they had when the
 // drag started and the table grows or shrinks. The drag only changes the DOM;
-// the widths reach the document once, on release, so one drag is one undo
-// step.
+// the widths reach display-only editor state on release. Markdown and its
+// undo history are unchanged.
 import { columnWidthFromPixels } from "../../domain/tableColumnWidths.js";
 
 const CHARACTER_PROBE_LENGTH = 10;

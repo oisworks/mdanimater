@@ -370,6 +370,23 @@ export function createEditorThemeExtension() {
   ".cm-richdown-lint-line-hint": {
     "--richdown-lint-color": "var(--vscode-editorHint-foreground, #808080)",
   },
+  // Git marks occupy a separate lane left of the diagnostic overview ruler.
+  ".cm-git-diff-ruler": {
+    position: "absolute", top: "0", bottom: "0", width: "9px",
+    zIndex: "250", pointerEvents: "none",
+  },
+  ".cm-git-diff-ruler-mark": {
+    position: "absolute", width: "3px", pointerEvents: "auto", cursor: "pointer",
+  },
+  ".cm-git-diff-ruler-added": {
+    left: "0", backgroundColor: "var(--vscode-editorOverviewRuler-addedForeground, #81b88b)",
+  },
+  ".cm-git-diff-ruler-modified": {
+    left: "3px", backgroundColor: "var(--vscode-editorOverviewRuler-modifiedForeground, #e2c08d)",
+  },
+  ".cm-git-diff-ruler-deleted": {
+    left: "6px", backgroundColor: "var(--vscode-editorOverviewRuler-deletedForeground, #c74e39)",
+  },
   // Overview ruler: problem positions across the whole document.
   ".cm-richdown-lint-ruler": {
     position: "absolute",

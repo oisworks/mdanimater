@@ -18,6 +18,8 @@ import {
   createColumnResizeHandle,
 } from "./columnResize.js";
 
+import { getTableDisplayWidths, setTableDisplayWidths } from "./displayWidths.js";
+
 let tableContextMenu = null;
 let tableContextMenuAnchor = null;
 
@@ -277,7 +279,7 @@ export function createTablePreviewWidgetClass({
         );
       }
       table.appendChild(tbody);
-      applyColumnWidths(table, this.tableBlock.columnWidths);
+      applyColumnWidths(table, getTableDisplayWidths(view.state, this.tableBlock));
 
       if (!readOnly) {
         const toolbar = document.createElement("div");
@@ -481,7 +483,7 @@ export function createTablePreviewWidgetClass({
               createColumnResizeHandle({
                 wrapper,
                 columnIndex,
-                getWidths: () => this.tableBlock.columnWidths,
+                getWidths: () => getTableDisplayWidths(view.state, this.tableBlock),
                 getAlignments: () => this.tableBlock.alignments,
                 onResize: (widths) => this.resizeColumns(view, wrapper, widths),
                 onReset: () =>
@@ -768,8 +770,14 @@ export function createTablePreviewWidgetClass({
       if (view.state.readOnly) {
         return;
       }
-      const rows = collectEditableTableRows(wrapper, this.tableBlock);
-      this.replaceTable(view, rows, this.tableBlock.alignments, widths);
+      // Never commit pending cell input or dirty Markdown just to change layout.
+      view.dispatch({
+        effects: setTableDisplayWidths.of({
+          from: this.tableBlock.from, to: this.tableBlock.sourceTo, widths,
+        }),
+      });
+      applyColumnWidths(wrapper.querySelector(".cm-rich-table"), widths);
+      requestEditorMeasure(view);
     }
   
     applyTableContextAction(view, wrapper, rowIndex, columnIndex, action) {

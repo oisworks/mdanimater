@@ -25,6 +25,8 @@ import { createMermaidPreviewWidgetClass } from "../mermaid/mermaidPreview.js";
 import { createSyntaxPreviewDecorations } from "./syntaxPreviewDecorations.js";
 import { createTablePreviewWidgetClass } from "../table/tablePreview.js";
 
+import { tableDisplayWidthsField } from "../table/displayWidths.js";
+
 export function createPreviewExtensions({
   appendInlineMarkdown,
   findMarkdownImages,
@@ -932,6 +934,7 @@ export function createPreviewExtensions({
     extensions: [
       frontmatterDecorationField,
       detailsDecorationField,
+      tableDisplayWidthsField,
       tableDecorationField,
       mermaidDecorationField,
       gherkinDecorationField,

@@ -813,7 +813,7 @@ describe("resizing columns", () => {
     mouse(document, "mouseup", 140);
   });
 
-  it("writes every column's width into the delimiter row on release", () => {
+  it("keeps every column width in display state without changing the document", () => {
     stubLayout();
     const { dom, view } = mountWidthTable();
 
@@ -821,10 +821,10 @@ describe("resizing columns", () => {
     mouse(document, "mousemove", 140);
     mouse(document, "mouseup", 140);
 
-    expect(delimiterLine(view)).toBe(
-      `| ${"-".repeat(18)} | ${"-".repeat(12)}: | ${"-".repeat(13)} |`,
-    );
-    expect(view.state.doc.toString()).toContain("| a | 1 | x |");
+    expect(view.state.doc.toString()).toBe(WIDTH_TABLE_DOC);
+    expect(columnWidths(dom)).toEqual(["18ch", "13ch", "13ch"]);
+    expect(columnWidths(harness.widget("TablePreviewWidget").toDOM(view)))
+      .toEqual(["18ch", "13ch", "13ch"]);
   });
 
   it("never makes a column narrower than the minimum width", () => {
@@ -835,14 +835,12 @@ describe("resizing columns", () => {
     mouse(document, "mousemove", -400);
     mouse(document, "mouseup", -400);
 
-    // The minimum for a right-aligned column is "----:" (5), but "Value" is 5
-    // wide too, so one is added to keep it a width.
-    expect(delimiterLine(view)).toBe(
-      `| ${"-".repeat(13)} | -----: | ${"-".repeat(13)} |`,
-    );
+    expect(columnWidths(dom)).toEqual(["13ch", "5ch", "13ch"]);
+    expect(view.state.doc.toString()).toBe(WIDTH_TABLE_DOC);
   });
 
   it("keeps uncommitted cell input when a column is resized", () => {
+    vi.useFakeTimers();
     stubLayout();
     const { dom, view } = mountWidthTable();
     type(cellEditor(dom, 1, 1), "kept");
@@ -851,7 +849,13 @@ describe("resizing columns", () => {
     mouse(document, "mousemove", 140);
     mouse(document, "mouseup", 140);
 
+    expect(view.state.doc.toString()).toBe(WIDTH_TABLE_DOC);
+    expect(cellEditor(dom, 1, 1).textContent).toBe("kept");
+    dom.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
+    vi.advanceTimersByTime(0);
     expect(view.state.doc.toString()).toContain("| a | kept | x |");
+    expect(columnWidths(harness.widget("TablePreviewWidget").toDOM(view)))
+      .toEqual(["18ch", "13ch", "13ch"]);
   });
 
   it("does nothing when the handle is only clicked", () => {
@@ -899,6 +903,32 @@ describe("resizing columns", () => {
     const { dom, view } = mountWidthTable();
     resizer(dom, 2).dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
 
-    expect(delimiterLine(view)).toBe("| --- | ---: | --- |");
+    expect(view.state.doc.toString()).toBe(WIDTH_TABLE_DOC);
+    expect(columnWidths(dom)).toEqual(["", "", ""]);
+    expect(columnWidths(harness.widget("TablePreviewWidget").toDOM(view)))
+      .toEqual(["", "", ""]);
+  });
+
+  it("keeps display widths when text above the table changes", () => {
+    stubLayout();
+    const { dom, view } = mountWidthTable();
+    mouse(resizer(dom, 0), "mousedown", 100);
+    mouse(document, "mousemove", 140);
+    mouse(document, "mouseup", 140);
+    view.dispatch({ changes: { from: 0, insert: "New paragraph\n\n" } });
+    expect(columnWidths(harness.widget("TablePreviewWidget").toDOM(view)))
+      .toEqual(["18ch", "13ch", "13ch"]);
+  });
+
+  it("does not share widths between editor views", () => {
+    stubLayout();
+    const { dom } = mountWidthTable();
+    mouse(resizer(dom, 0), "mousedown", 100);
+    mouse(document, "mousemove", 140);
+    mouse(document, "mouseup", 140);
+    const other = createPreviewHarness({ doc: WIDTH_TABLE_DOC });
+    expect(columnWidths(other.widget("TablePreviewWidget").toDOM(other.view)))
+      .toEqual(["12ch", "", ""]);
+    other.destroy();
   });
 });

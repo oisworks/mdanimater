@@ -24,3 +24,6 @@ yarn-error.log*
 package-lock.json
 tasks/**
 docs/**
+
+!src/host/review/
+!src/host/review/**

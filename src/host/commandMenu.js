@@ -1,5 +1,7 @@
 // One discoverable entry point; individual commands remain callable by shortcuts.
 const actions = [
+  { label: 'Open Review Comments', command: 'mdanimater.openReviewComments' },
+  { label: 'Refresh Review Comments', command: 'mdanimater.refreshReviewComments' },
   { label: 'Toggle Markdown Open Mode', command: 'mdanimater.toggle' },
   { label: 'Open Rich Diff', command: 'mdanimater.openRichDiff' },
   { label: 'Export HTML', command: 'mdanimater.exportHtml' },

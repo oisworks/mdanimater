@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Read existing GitHub PR and GitLab.com MR review comments inside the IDE through authenticated official CLIs, with refresh.
+- Show Git additions, modifications and deletions beside the rich editor scrollbar, separately from lint markers, with click-to-scroll navigation.
+- Keep table column resizing in editor display state instead of rewriting Markdown. Width adjustments last for the open editor session; existing source widths remain readable.
+
 ## 0.3.3 - 2026-11-13
 
 - Drag the right edge of the text area to resize it and remember the width. Smaller windows still fit the content; double-click the edge to restore automatic width. The grip also supports arrow keys and Home to reset.

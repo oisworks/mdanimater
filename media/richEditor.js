@@ -47239,6 +47239,81 @@
     return title.toLowerCase().replace(/[^\p{L}\p{N}\s_-]/gu, "").trim().replace(/\s+/g, "-");
   }
 
+  // src/rich-editor/presentation/codemirror/gitDiffOverviewRuler.js
+  function createGitDiffOverviewRuler(getChanges) {
+    return ViewPlugin.fromClass(class {
+      constructor(view2) {
+        this.view = view2;
+        this.dom = document.createElement("div");
+        this.dom.className = "cm-git-diff-ruler";
+        this.dom.setAttribute("aria-label", "Git changes");
+        this.dom.addEventListener("mousedown", (event) => {
+          const marker = event.target.closest?.("[data-pos]");
+          if (!marker) return;
+          event.preventDefault();
+          view2.dispatch({ effects: EditorView.scrollIntoView(Number(marker.dataset.pos), { y: "center" }) });
+        });
+        view2.dom.appendChild(this.dom);
+        this.measure();
+      }
+      update(update) {
+        if (update.docChanged || update.geometryChanged || update.heightChanged || getChanges(update.startState) !== getChanges(update.state)) this.measure();
+      }
+      measure() {
+        this.view.requestMeasure({
+          key: this,
+          read: (view2) => {
+            const entries = getChanges(view2.state).map((change) => {
+              const line = view2.state.doc.line(Math.min(change.line, view2.state.doc.lines));
+              const block2 = view2.lineBlockAt(line.from);
+              return { pos: line.from, type: change.type, top: block2.top, height: block2.height };
+            });
+            return {
+              markers: layoutGitRulerMarkers(entries, view2.contentHeight, view2.scrollDOM.clientHeight),
+              // Lint retains its own rightmost 8px lane.
+              right: 8 + Math.max(0, view2.scrollDOM.offsetWidth - view2.scrollDOM.clientWidth)
+            };
+          },
+          write: ({ markers, right }) => {
+            this.dom.style.right = `${right}px`;
+            this.dom.hidden = markers.length === 0;
+            this.dom.replaceChildren(...markers.map((marker) => {
+              const mark = document.createElement("div");
+              mark.className = `cm-git-diff-ruler-mark cm-git-diff-ruler-${marker.type}`;
+              mark.style.top = `${marker.top}px`;
+              mark.style.height = `${marker.height}px`;
+              mark.dataset.pos = String(marker.pos);
+              mark.title = `Git: ${marker.type}`;
+              return mark;
+            }));
+          }
+        });
+      }
+      destroy() {
+        this.dom.remove();
+      }
+    });
+  }
+  function layoutGitRulerMarkers(entries, contentHeight, rulerHeight) {
+    if (!(rulerHeight > 0)) return [];
+    const scale = rulerHeight / Math.max(contentHeight, rulerHeight, 1);
+    const markers = [];
+    for (const type4 of ["added", "modified", "deleted"]) {
+      let previous = null;
+      for (const entry of entries.filter((item) => item.type === type4).sort((a2, b) => a2.top - b.top)) {
+        const height = Math.min(rulerHeight, Math.max(3, entry.height * scale));
+        const top2 = Math.max(0, Math.min(entry.top * scale, rulerHeight - height));
+        if (previous && top2 <= previous.top + previous.height) {
+          previous.height = Math.max(previous.height, top2 + height - previous.top);
+        } else {
+          previous = { pos: entry.pos, type: type4, top: top2, height };
+          markers.push(previous);
+        }
+      }
+    }
+    return markers;
+  }
+
   // src/rich-editor/presentation/codemirror/gitDiffGutter.js
   var gitChangeTypes = /* @__PURE__ */ new Set(["added", "modified", "deleted"]);
   var gitChangeOrder = ["deleted", "modified", "added"];
@@ -47283,7 +47358,7 @@
       });
     }
     return {
-      extension: gitDiffField,
+      extension: [gitDiffField, createGitDiffOverviewRuler((state) => state.field(gitDiffField).changes)],
       update
     };
   }
@@ -50878,6 +50953,43 @@
     return pixels > 0 ? pixels : FALLBACK_CHARACTER_PIXELS;
   }
 
+  // src/rich-editor/presentation/table/displayWidths.js
+  var setTableDisplayWidths = StateEffect.define();
+  var tableDisplayWidthsField = StateField.define({
+    create: () => [],
+    update(entries, transaction) {
+      if (transaction.docChanged && entries.length) {
+        const tables = findTableBlocks(transaction.newDoc);
+        entries = entries.flatMap((entry) => {
+          let deleted = false;
+          transaction.changes.iterChanges((from4, to, _newFrom, _newTo, inserted) => {
+            if (from4 <= entry.from && to >= entry.to && inserted.length === 0) deleted = true;
+          });
+          if (deleted) return [];
+          const from3 = transaction.changes.mapPos(entry.from, 1);
+          const replacementFrom = transaction.changes.mapPos(entry.from, -1);
+          const table = tables.find(
+            (candidate) => candidate.from === from3 || candidate.from === replacementFrom
+          );
+          return table && table.columnCount === entry.widths.length ? [{ from: table.from, to: table.sourceTo, widths: entry.widths }] : [];
+        });
+      }
+      for (const effect of transaction.effects) {
+        if (effect.is(setTableDisplayWidths)) {
+          entries = entries.filter((entry) => entry.from !== effect.value.from);
+          entries = [...entries, { ...effect.value, widths: [...effect.value.widths] }];
+        }
+      }
+      return entries;
+    }
+  });
+  function getTableDisplayWidths(state, tableBlock) {
+    const entry = state.field(tableDisplayWidthsField, false)?.find(
+      (candidate) => candidate.from === tableBlock.from
+    );
+    return entry?.widths.length === tableBlock.columnCount ? entry.widths : tableBlock.columnWidths;
+  }
+
   // src/rich-editor/presentation/table/tablePreview.js
   var tableContextMenu = null;
   var tableContextMenuAnchor = null;
@@ -51093,7 +51205,7 @@
           );
         }
         table.appendChild(tbody);
-        applyColumnWidths(table, this.tableBlock.columnWidths);
+        applyColumnWidths(table, getTableDisplayWidths(view2.state, this.tableBlock));
         if (!readOnly2) {
           const toolbar = document.createElement("div");
           toolbar.className = "cm-rich-table-toolbar";
@@ -51275,7 +51387,7 @@
                 createColumnResizeHandle({
                   wrapper,
                   columnIndex,
-                  getWidths: () => this.tableBlock.columnWidths,
+                  getWidths: () => getTableDisplayWidths(view2.state, this.tableBlock),
                   getAlignments: () => this.tableBlock.alignments,
                   onResize: (widths) => this.resizeColumns(view2, wrapper, widths),
                   onReset: () => this.resizeColumns(
@@ -51523,8 +51635,15 @@ ${rowText}`;
         if (view2.state.readOnly) {
           return;
         }
-        const rows = collectEditableTableRows(wrapper, this.tableBlock);
-        this.replaceTable(view2, rows, this.tableBlock.alignments, widths);
+        view2.dispatch({
+          effects: setTableDisplayWidths.of({
+            from: this.tableBlock.from,
+            to: this.tableBlock.sourceTo,
+            widths
+          })
+        });
+        applyColumnWidths(wrapper.querySelector(".cm-rich-table"), widths);
+        requestEditorMeasure2(view2);
       }
       applyTableContextAction(view2, wrapper, rowIndex, columnIndex, action) {
         if (view2.state.readOnly) {
@@ -52494,6 +52613,7 @@ ${rowText}`;
       extensions: [
         frontmatterDecorationField,
         detailsDecorationField,
+        tableDisplayWidthsField,
         tableDecorationField,
         mermaidDecorationField,
         gherkinDecorationField,
@@ -55182,6 +55302,33 @@ ${rowText}`;
       },
       ".cm-richdown-lint-line-hint": {
         "--richdown-lint-color": "var(--vscode-editorHint-foreground, #808080)"
+      },
+      // Git marks occupy a separate lane left of the diagnostic overview ruler.
+      ".cm-git-diff-ruler": {
+        position: "absolute",
+        top: "0",
+        bottom: "0",
+        width: "9px",
+        zIndex: "250",
+        pointerEvents: "none"
+      },
+      ".cm-git-diff-ruler-mark": {
+        position: "absolute",
+        width: "3px",
+        pointerEvents: "auto",
+        cursor: "pointer"
+      },
+      ".cm-git-diff-ruler-added": {
+        left: "0",
+        backgroundColor: "var(--vscode-editorOverviewRuler-addedForeground, #81b88b)"
+      },
+      ".cm-git-diff-ruler-modified": {
+        left: "3px",
+        backgroundColor: "var(--vscode-editorOverviewRuler-modifiedForeground, #e2c08d)"
+      },
+      ".cm-git-diff-ruler-deleted": {
+        left: "6px",
+        backgroundColor: "var(--vscode-editorOverviewRuler-deletedForeground, #c74e39)"
       },
       // Overview ruler: problem positions across the whole document.
       ".cm-richdown-lint-ruler": {

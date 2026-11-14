@@ -70,6 +70,8 @@
   },
   "contributes": {
     "commands": [
+      { "command": "mdanimater.openReviewComments", "title": "mdanimater: Open Review Comments" },
+      { "command": "mdanimater.refreshReviewComments", "title": "mdanimater: Refresh Review Comments" },
       {
         "command": "mdanimater.openMenu",
         "title": "mdanimater: Open Menu",
@@ -279,6 +281,8 @@
         }
       ],
       "commandPalette": [
+        { "command": "mdanimater.openReviewComments", "when": "false" },
+        { "command": "mdanimater.refreshReviewComments", "when": "false" },
         {
           "command": "mdanimater.openMenu"
         },

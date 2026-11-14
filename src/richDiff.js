@@ -231,6 +231,10 @@ window.addEventListener("message", (event) => {
 });
 
 root.addEventListener("click", (event) => {
+  if (event.target.closest("[data-action='review-comments']")) {
+    vscode.postMessage({ type: "openReviewComments" });
+    return;
+  }
   if (event.target.closest("[data-action='source-diff']")) {
     vscode.postMessage({ type: "openSourceDiff" });
     return;
@@ -280,6 +284,7 @@ function renderDiff() {
         </div>
         <div class="rdiff-stats" aria-label="Diff summary">
           <button type="button" class="rdiff-copy" data-action="source-diff">Source Diff</button>
+          <button type="button" class="rdiff-copy" data-action="review-comments">Review Comments</button>
           <span class="rdiff-stat rdiff-stat-add">+${stats.added}</span>
           <span class="rdiff-stat rdiff-stat-delete">-${stats.deleted}</span>
           <span class="rdiff-stat">${stats.changed} changed lines</span>

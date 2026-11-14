@@ -2,6 +2,10 @@ const vscode = require('vscode');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
+const { parseReviewUrl, readReviewComments, renderComments } = require('./src/host/review/readComments');
+let reviewCommentsPanel;
+let selectedReview;
+let reviewCommentsGeneration = 0;
 const {
   containsMermaidBlocks,
   createExportImageMap,
@@ -72,6 +76,8 @@ const markdownQuality = createMarkdownQuality(vscode, {
 });
 
 function activate(context) {
+  context.subscriptions.push(vscode.commands.registerCommand('mdanimater.openReviewComments', () => openReviewComments(context)));
+  context.subscriptions.push(vscode.commands.registerCommand('mdanimater.refreshReviewComments', () => openReviewComments(context, true)));
   context.subscriptions.push(vscode.commands.registerCommand('mdanimater.openMenu', resource => openCommandMenu(vscode, resource)));
   context.subscriptions.push(vscode.commands.registerCommand('mdanimater.toggle', toggleMarkdownOpenMode));
   context.subscriptions.push(vscode.commands.registerCommand('mdanimater.openGitDiff', resource => openRichDiff(context, resource)));
@@ -804,6 +810,10 @@ function createRichDiffPanel(context, documentUri, diffData, comparison, title) 
   });
 
   panel.webview.onDidReceiveMessage(async event => {
+    if (event.type === 'openReviewComments') {
+      await openReviewComments(context);
+      return;
+    }
     if (event.type === 'openSourceDiff' && comparison) {
       await richDiffRouting.openNative(comparison, () => vscode.commands.executeCommand(
         'vscode.diff', comparison.original, comparison.modified,
@@ -1905,3 +1915,44 @@ module.exports = {
   activate,
   deactivate
 };
+
+async function openReviewComments(context, refresh = false) {
+  if (!vscode.workspace.isTrusted) {
+    await vscode.window.showWarningMessage('Review comments require a trusted workspace before running gh or glab.');
+    return;
+  }
+  let review = refresh ? selectedReview : null;
+  if (!review) {
+    const value = await vscode.window.showInputBox({
+      title: 'Read review comments in mdanimater',
+      prompt: 'Paste a GitHub PR or GitLab.com MR URL. Uses your existing gh / glab sign-in; does not post comments.',
+      value: selectedReview?.url || '',
+      placeHolder: 'https://github.com/owner/repo/pull/123',
+      validateInput: input => parseReviewUrl(input) ? undefined : 'Enter a GitHub PR or GitLab.com MR HTTPS URL.'
+    });
+    if (value === undefined) return;
+    review = parseReviewUrl(value);
+    if (!review) return;
+  }
+  const generation = ++reviewCommentsGeneration;
+  try {
+    const threads = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: 'Loading review comments' }, () => readReviewComments(review));
+    if (generation !== reviewCommentsGeneration) return;
+    selectedReview = review;
+    if (!reviewCommentsPanel) {
+      reviewCommentsPanel = vscode.window.createWebviewPanel('mdanimater.reviewComments', 'Review Comments', vscode.ViewColumn.Beside, { enableScripts: false, enableCommandUris: ['mdanimater.refreshReviewComments'] });
+      const currentPanel = reviewCommentsPanel;
+      context.subscriptions.push(currentPanel);
+      currentPanel.onDidDispose(() => {
+        if (reviewCommentsPanel === currentPanel) {
+          reviewCommentsPanel = undefined;
+          reviewCommentsGeneration++;
+        }
+      });
+    }
+    reviewCommentsPanel.webview.html = `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline';"><style>body{font-family:var(--vscode-font-family);padding:20px;color:var(--vscode-editor-foreground);background:var(--vscode-editor-background)}section{border-top:1px solid var(--vscode-panel-border);margin-top:20px}h1{font-size:20px}h2{font-size:14px}pre{font:inherit;white-space:pre-wrap;overflow-wrap:anywhere}article{padding:10px 0}small{opacity:.7}</style></head><body><p><a href="command:mdanimater.refreshReviewComments">Refresh comments</a></p>${renderComments(review, threads)}</body></html>`;
+    reviewCommentsPanel.reveal(vscode.ViewColumn.Beside);
+  } catch (error) {
+    if (generation === reviewCommentsGeneration) await vscode.window.showErrorMessage(error.message);
+  }
+}
